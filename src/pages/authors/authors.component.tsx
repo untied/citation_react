@@ -5,12 +5,18 @@ import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit } from '@fortawesome/free-regular-svg-icons';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 import { API } from '../../api/api';
 import { IAuthorRecord } from '../../database/database';
 
 import ColumnSort, { SORT } from '../../elements/column-sort/column-sort';
+
+enum ModifyMode {
+    NONE,
+    CREATE,
+    UPDATE
+}
 
 interface ISortRefs {
     refSortId          : RefObject<ColumnSort>,
@@ -25,7 +31,7 @@ interface IAuthorList {
 
 interface IModifyModal {
     modifyId   : number;
-    showModify : boolean;
+    modifyMode : ModifyMode;
 }
 
 interface IDeleteModal {
@@ -46,7 +52,7 @@ interface IAuthorSort {
     sortMode : SORT;
 }
 
-// компонент "Список авторов"
+// the component to represent a list of authors
 export default class AuthorsComponent extends React.Component<IAuthorList & IAuthorSort & IModifyModal & IDeleteModal, any> {
     private author: IModifyAuthor = {
         firstName    : '',
@@ -56,10 +62,10 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         dayOfBirth   : 0
     };
 
-    // рефы
+    // refs
     private sortRefs: ISortRefs;
 
-    // конструктор
+    // component constructor
     public constructor(props: any) {
         super(props);
 
@@ -69,7 +75,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
             authors    : [],
             authorSort : authorSort ? JSON.parse(authorSort) : {sortBy: 'ID', sortMode: SORT.ASCENDING},
             modifyId   : -1,
-            showModify : false,
+            modifyMode : ModifyMode.NONE,
             deleteId   : -1,
             showDelete : false
         };
@@ -86,19 +92,17 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         this.modifyAuthor   = this.modifyAuthor.bind(this);
         this.modalDelete    = this.modalDelete.bind(this);
         this.deleteAuthor   = this.deleteAuthor.bind(this);
+        this.onClickCreate  = this.onClickCreate.bind(this);
+        this.onClickUpdate  = this.onClickUpdate.bind(this);
         this.onClickSorting = this.onClickSorting.bind(this);
     }
 
-    // инициализация компонента
+    // component initialization hook
     public componentDidMount(): void {
         this.getAutors();
     }
 
-    // деинициализация компонента
-    public componentWillMount(): void {
-    }
-
-    // сортировка цитат
+    // author sorting
     private sortAuthors(authors: IAuthorRecord[], sortBy: string, sortMode: SORT): void {
         const fnSortByIdAsc = (a1: IAuthorRecord, a2: IAuthorRecord) => {
             const id1: number = a1.id;
@@ -159,7 +163,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         }
     }
 
-    // тело таблицы
+    // body of the table
     private tableBody(): JSX.Element | null {
         if (this.state.authors.length > 0) {
             return (
@@ -173,7 +177,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
                             <Moment format="YYYY-MM-DD">{author.dateOfBirth}</Moment>
                         </td>
                         <td>
-                            <Button variant="success" size="sm" title="Редактировать" onClick={() => this.onClickModify(author.id)}>
+                            <Button variant="success" size="sm" title="Редактировать" onClick={() => this.onClickUpdate(author.id)}>
                                 <FontAwesomeIcon icon={faEdit} fixedWidth />
                             </Button>
                             &nbsp;
@@ -190,9 +194,9 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         }
     }
 
-    // модальный диалог редактирования автора
+    // modal dialog to create or edit an author
     private modalModify(): JSX.Element | null {
-        // обработка ввода полей
+        // field input event handler
         const handleInput = (evt: any) => {
             switch (evt.target.name) {
                 case 'firstName':
@@ -215,22 +219,22 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
             }
         };
 
-        // обработка сохранения автора
+        // author save event handler
         const handleSave = () => {
             this.modifyAuthor();
         };
 
-        // обработка закрытия диалога
+        // dialog close event handler
         const handleClose = () => {
             this.setState({
-                showModify: false
+                modifyMode: ModifyMode.NONE
             });
         };
 
         return (
-            <Modal centered size="lg" show={this.state.showModify} onHide={handleClose}>
+            <Modal centered size="lg" show={this.state.modifyMode !== ModifyMode.NONE} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Редактирование автора</Modal.Title>
+                    <Modal.Title>{this.state.modifyMode === ModifyMode.CREATE ? 'Новый автор' : 'Редактирование автора'}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form>
@@ -268,7 +272,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         );
     }
 
-    // модальный диалог удаления автора
+    // modal dialog to remove an author
     private modalDelete(): JSX.Element | null {
         const handleClose = () => {
             this.setState({
@@ -292,11 +296,16 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         );
     }
 
-    // вывод
+    // component output
     public render(): JSX.Element | null {
         return (
             <div className="container-fluid text-left">
-                <h3>Авторы</h3>
+                <div className="d-flex justify-content-between">
+                    <h3>Авторы</h3>
+                    <Button variant="info" size="sm" onClick={this.onClickCreate}>
+                        <FontAwesomeIcon icon={faPlus} fixedWidth /> Новый автор
+                    </Button>
+                </div>
                 <table className="table">
                     <thead className="thead-light">
                         <tr>
@@ -347,9 +356,9 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         );
     }
 
-    // запрос списка авторов
+    // request the list of authors
     private getAutors(): void {
-        // запрашиваем список авторов, как будто это AJAX-запрос
+        // getting the list in a manner of AJAX request
         API.getAuthors()
             .then((authors: IAuthorRecord[]) => {
                 this.sortAuthors(authors, this.state.authorSort.sortBy, this.state.authorSort.sortMode);
@@ -359,7 +368,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
             });
     }
 
-    // клик по кнопке сортировки
+    // column sort click event handler
     private onClickSorting(sortBy: string, sortMode: SORT): void {
         switch (sortBy) {
             case 'ID':
@@ -396,8 +405,24 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         this.sortAuthors(this.state.authors, sortBy, sortMode);
     }
 
-    // клик по кнопке редактирования автора
-    private onClickModify(id: number): void {
+    // author create event handler
+    private onClickCreate(): void {
+        const today: Date = new Date();
+
+        this.author.firstName    = '';
+        this.author.lastName     = '';
+        this.author.yearOfBirth  = today.getFullYear();
+        this.author.monthOfBirth = today.getMonth() + 1;
+        this.author.dayOfBirth   = today.getDate();
+
+        this.setState({
+            modifyId   : -1,
+            modifyMode : ModifyMode.CREATE
+        });
+    }
+
+    // author modification event handler
+    private onClickUpdate(id: number): void {
         for (let i: number = 0; i < this.state.authors.length; i++) {
             if (this.state.authors[i].id === id) {
                 let author: IAuthorRecord = this.state.authors[i];
@@ -409,13 +434,14 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
                 break;
             }
         }
+
         this.setState({
             modifyId   : id,
-            showModify : true
+            modifyMode : ModifyMode.UPDATE
         });
     }
 
-    // сохранение автора
+    // save an author
     private modifyAuthor(): void {
         let dateOfBirth: Date;
 
@@ -429,32 +455,53 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
             window.alert('Неправильно задан день рождения автора!');
             return;
         } else {
-            dateOfBirth = new Date(this.author.yearOfBirth, this.author.monthOfBirth, this.author.dayOfBirth);
+            dateOfBirth = new Date(this.author.yearOfBirth, this.author.monthOfBirth - 1, this.author.dayOfBirth);
         }
-        // запрашиваем сохранение автора, как будто это AJAX-запрос
-        API.modifyAuthor(this.state.modifyId, this.author.firstName, this.author.lastName, dateOfBirth)
-            .then(() => {
-                const authors: IAuthorRecord[] = this.state.authors;
-                for (let i = 0; i < authors.length; i++) {
-                    if (authors[i].id === this.state.modifyId) {
-                        authors[i] = {
-                            id          : this.state.modifyId,
-                            firstName   : this.author.firstName,
-                            lastName    : this.author.lastName,
-                            dateOfBirth : dateOfBirth
-                        }
-                        break;
-                    }
-                }
-                this.setState({
-                    authors,
-                    modifyId   : -1,
-                    showModify : false
+
+        // saving the author's data in a manner of AJAX request
+        if (this.state.modifyMode === ModifyMode.CREATE) {
+            API.createAuthor(this.author.firstName, this.author.lastName, dateOfBirth)
+                .then((id: number) => {
+                    const authors: IAuthorRecord[] = this.state.authors;
+                    authors.push({
+                        id          : id,
+                        firstName   : this.author.firstName,
+                        lastName    : this.author.lastName,
+                        dateOfBirth : dateOfBirth
+                    });
+                    this.sortAuthors(authors, this.state.authorSort.sortBy, this.state.authorSort.sortMode);
+
+                    this.setState({
+                        authors,
+                        modifyId   : -1,
+                        modifyMode : ModifyMode.NONE
+                    });
                 });
-            });
+        } else if (this.state.modifyMode === ModifyMode.UPDATE) {
+            API.updateAuthor(this.state.modifyId, this.author.firstName, this.author.lastName, dateOfBirth)
+                .then(() => {
+                    const authors: IAuthorRecord[] = this.state.authors;
+                    for (let i = 0; i < authors.length; i++) {
+                        if (authors[i].id === this.state.modifyId) {
+                            authors[i] = {
+                                id          : this.state.modifyId,
+                                firstName   : this.author.firstName,
+                                lastName    : this.author.lastName,
+                                dateOfBirth : dateOfBirth
+                            }
+                            break;
+                        }
+                    }
+                    this.setState({
+                        authors,
+                        modifyId   : -1,
+                        modifyMode : ModifyMode.NONE
+                    });
+                });
+        }
     }
 
-    // клик по кнопке удаления автора
+    // author remove event handler
     private onClickDelete(id: number): void {
         this.setState({
             deleteId   : id,
@@ -462,9 +509,9 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
         });
     }
 
-    // удаление автора
+    // remove an author
     private deleteAuthor(): void {
-        // запрашиваем удаление автора, как будто это AJAX-запрос
+        // removing the selected citation in a manner of AJAX request
         API.deleteAuthor(this.state.deleteId)
             .then(() => {
                 const authors: IAuthorRecord[] = this.state.authors;

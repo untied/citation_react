@@ -1,19 +1,24 @@
 import React, { RefObject } from 'react';
 import Moment from 'react-moment';
-// import nl2br from 'react-nl2br';
 
 import { Button, Col, Form, Modal, Row } from 'react-bootstrap';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEdit } from '@fortawesome/free-regular-svg-icons';
-import { faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faTimes } from '@fortawesome/free-solid-svg-icons';
 
 import { API } from '../../api/api';
 import { IAuthorRecord, ICitationRecord } from '../../database/database';
 
 import ColumnSort, { SORT } from '../../elements/column-sort/column-sort';
 
-const nl2br = require('react-nl2br');
+const nl2br: any = require('react-nl2br');
+
+enum ModifyMode {
+    NONE,
+    CREATE,
+    UPDATE
+}
 
 interface IAuthorHash {
     [id: number]: IAuthorRecord
@@ -45,25 +50,25 @@ interface ICitationSort {
     sortMode : SORT;
 }
 
-// компонент "Список цитат"
+// the component to represent a list of citations
 export default class CitationsComponent extends React.Component<ICitationList & ICitationSort, any> {
-    // просматриваемая/редактируемая цитата
+    // currently selected citation
     private citation: IModifyCitation = {
         subject  : '',
         message  : '',
         authorId : -1
     };
 
-    // список авторов
+    // list of authors
     private authors: IAuthorRecord[] = [];
 
-    // хэш авторов
+    // hashed authors
     private authorHash: IAuthorHash = {};
 
-    // рефы
+    // refs
     private sortRefs: ISortRefs;
 
-    // конструктор
+    // component constructor
     public constructor(props: any) {
         super(props);
 
@@ -75,7 +80,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
             citationLength : 0,
             modifyId       : -1,
             showReveal     : false,
-            showModify     : false,
+            modifyMode     : ModifyMode.NONE,
             deleteId       : -1,
             showDelete     : false
         };
@@ -93,20 +98,18 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         this.modifyCitation = this.modifyCitation.bind(this);
         this.modalDelete    = this.modalDelete.bind(this);
         this.deleteCitation = this.deleteCitation.bind(this);
+        this.onClickCreate  = this.onClickCreate.bind(this);
+        this.onClickUpdate  = this.onClickUpdate.bind(this);
         this.onClickSorting = this.onClickSorting.bind(this);
     }
 
-    // инициализация компонента
+    // component initialization hook
     public componentDidMount(): void {
         this.getCitations();
         this.getAutors();
     }
 
-    // деинициализация компонента
-    public componentWillMount(): void {
-    }
-
-    // сортировка цитат
+    // citation sorting
     private sortCitations(citations: ICitationRecordExt[], sortBy: string, sortMode: SORT): void {
         const fnSortByIdAsc = (c1: ICitationRecordExt, c2: ICitationRecordExt) => {
             const id1: number = c1.id;
@@ -167,7 +170,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         }
     }
 
-    // тело таблицы
+    // body of the table
     private tableBody(): JSX.Element | null {
         if (this.state.citations.length > 0) {
             return (
@@ -183,7 +186,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
                             <a href="#!" onClick={(evt: any) => this.onClickReveal(citation.id, evt)}>{citation.subject}</a>
                         </td>
                         <td>
-                            <Button variant="success" size="sm" title="Редактировать" onClick={() => this.onClickModify(citation.id)}>
+                            <Button variant="success" size="sm" title="Редактировать" onClick={() => this.onClickUpdate(citation.id)}>
                                 <FontAwesomeIcon icon={faEdit} fixedWidth />
                             </Button>
                             &nbsp;
@@ -200,9 +203,9 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         }
     }
 
-    // запрос списка цитат
+    // request the list of citations
     private getCitations() {
-        // запрашиваем список цитат, как будто это AJAX-запрос
+        // getting the list in a manner of AJAX request
         API.getCitations()
             .then(async (citRecs: ICitationRecord[]) => {
                 let citations: ICitationRecordExt[] = [];
@@ -221,18 +224,18 @@ export default class CitationsComponent extends React.Component<ICitationList & 
             });
     }
 
-    // запрос списка авторов
+    // request the list of authors
     private getAutors(): void {
-        // запрашиваем список авторов, как будто это AJAX-запрос
+        // getting the list in a manner of AJAX request
         API.getAuthors()
             .then((authors: IAuthorRecord[]) => {
                 this.authors = authors;
             });
     }
 
-    // запрос заданного автора
+    // request the specified author
     private async findAuthor(id: number): Promise<string> {
-        // запрашиваем информацию о заданном авторе, как будто это AJAX-запрос
+        // getting the author's data in a manner of AJAX request
         return API.findAuthor(id)
             .then((author: IAuthorRecord | null) => {
                 if (author) {
@@ -249,9 +252,9 @@ export default class CitationsComponent extends React.Component<ICitationList & 
             });
     }
 
-    // модальный диалог просмотра цитаты
+    // modal dialog to display a citation
     private modalReveal(): JSX.Element | null {
-        // обработка закрытия диалога
+        // dilog close event handler
         const handleClose = () => {
             this.setState({
                 showReveal: false
@@ -278,9 +281,9 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         );
     }
 
-    // модальный диалог редактирования цитаты
+    // modal dialog to create or edit a citation
     private modalModify(): JSX.Element | null {
-        // обработка ввода полей
+        // field input event handler
         const handleInput = (evt: any) => {
             switch (evt.target.name) {
                 case 'subject':
@@ -300,22 +303,22 @@ export default class CitationsComponent extends React.Component<ICitationList & 
             }
         };
 
-        // обработка сохранения цитаты
+        // citation save event handler
         const handleSave = () => {
             this.modifyCitation();
         };
 
-        // обработка закрытия диалога
+        // dialog close event handler
         const handleClose = () => {
             this.setState({
-                showModify: false
+                modifyMode: ModifyMode.NONE
             });
         };
 
         return (
-            <Modal centered size="lg" show={this.state.showModify} onHide={handleClose}>
+            <Modal centered size="lg" show={this.state.modifyMode !== ModifyMode.NONE} onHide={handleClose}>
                 <Modal.Header closeButton>
-                    <Modal.Title>Редактирование цитаты</Modal.Title>
+                    <Modal.Title>{this.state.modifyMode === ModifyMode.CREATE ? 'Новая цитата' : 'Редактирование цитаты'}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form>
@@ -336,6 +339,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
                             <Form.Label column md="4">Автор</Form.Label>
                             <Col md="8">
                                 <Form.Control as="select" name="authorId" defaultValue={this.citation.authorId} onChange={handleInput}>
+                                    <option value="-1">&mdash;&mdash;&mdash; пожалуйста, выберите &mdash;&mdash;&mdash;</option>
                                     {this.authors.map((author: any) => (
                                         <option key={author.id} value={author.id}>{author.firstName} {author.lastName}</option>
                                     ))}
@@ -352,7 +356,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         );
     }
 
-    // модальный диалог удаления цитаты
+    // modal dialog to remove a citation
     private modalDelete(): JSX.Element | null {
         const handleClose = () => {
             this.setState({
@@ -376,11 +380,16 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         );
     }
 
-    // вывод
+    // component output
     public render(): JSX.Element | null {
         return (
             <div className="container-fluid text-left">
-                <h3>Цитаты</h3>
+                <div className="d-flex justify-content-between">
+                    <h3>Цитаты</h3>
+                    <Button variant="info" size="sm" onClick={this.onClickCreate}>
+                        <FontAwesomeIcon icon={faPlus} fixedWidth /> Новая цитата
+                    </Button>
+                </div>
                 <table className="table">
                     <thead className="thead-light">
                         <tr>
@@ -432,7 +441,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         );
     }
 
-    // клик по кнопке сортировки
+    // column sort click event handler
     private onClickSorting(sortBy: string, sortMode: SORT): void {
         switch (sortBy) {
             case 'ID':
@@ -469,7 +478,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         this.sortCitations(this.state.citations, sortBy, sortMode);
     }
 
-    // клик по ссылке просмотра цитаты
+    // citation display event handler
     private onClickReveal(id: number, evt: any): void {
         evt.preventDefault();
         evt.stopPropagation();
@@ -488,8 +497,21 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         });
     }
 
-    // клик по кнопке редактирования цитаты
-    private onClickModify(id: number): void {
+    // citation create event handler
+    private onClickCreate(): void {
+        this.citation.subject  = '';
+        this.citation.message  = '';
+        this.citation.authorId = -1;
+
+        this.setState({
+            citationLength : this.citation.message.length,
+            modifyId       : -1,
+            modifyMode     : ModifyMode.CREATE
+        });
+    }
+
+    // citation modification event handler
+    private onClickUpdate(id: number): void {
         for (let i: number = 0; i < this.state.citations.length; i++) {
             if (this.state.citations[i].id === id) {
                 let citation: ICitationRecord = this.state.citations[i];
@@ -502,11 +524,11 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         this.setState({
             citationLength : this.citation.message.length,
             modifyId       : id,
-            showModify     : true
+            modifyMode     : ModifyMode.UPDATE
         });
     }
 
-    // сохранение цитаты
+    // save a citation
     private modifyCitation(): void {
         if (!this.citation.subject) {
             window.alert('Неправильно задан заголовок цитаты!');
@@ -514,46 +536,77 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         } else if (!this.citation.message) {
             window.alert('Неправильно задан текст цитаты!');
             return;
-        } else if (isNaN(this.citation.authorId)) {
+        } else if (isNaN(this.citation.authorId) || this.citation.authorId === -1) {
             window.alert('Неправильно задан автор цитаты!');
             return;
         }
-        // запрашиваем сохранение цитаты, как будто это AJAX-запрос
-        API.modifyCitation(this.state.modifyId, this.citation.authorId, this.citation.subject, this.citation.message)
-            .then(() => {
-                let author: IAuthorRecord | null = null;
-                for (let i = 0; i < this.authors.length; i++) {
-                    if (this.authors[i].id === this.citation.authorId) {
-                        author = this.authors[i];
-                        break;
-                    }
-                }
-                if (author) {
-                    const citations: ICitationRecordExt[] = this.state.citations;
-                    for (let i = 0; i < citations.length; i++) {
-                        if (citations[i].id === this.state.modifyId) {
-                            citations[i] = {
-                                id             : this.state.modifyId,
-                                authorId       : this.citation.authorId,
-                                authorFullName : `${author.firstName} ${author.lastName}`,
-                                subject        : this.citation.subject,
-                                message        : this.citation.message,
-                                createdAt      : citations[i].createdAt
-                            }
+
+        // saving the citation's data in a manner of AJAX request
+        if (this.state.modifyMode === ModifyMode.CREATE) {
+            API.createCitation(this.citation.authorId, this.citation.subject, this.citation.message)
+                .then((id: number) => {
+                    let author: IAuthorRecord | null = null;
+                    for (let i = 0; i < this.authors.length; i++) {
+                        if (this.authors[i].id === this.citation.authorId) {
+                            author = this.authors[i];
                             break;
                         }
                     }
-                    this.sortCitations(citations, this.state.citationSort.sortBy, this.state.citationSort.sortMode);
-                    this.setState({
-                        citations,
-                        modifyId   : -1,
-                        showModify : false
-                    });
-                }
-            });
+                    if (author) {
+                        const citations: ICitationRecordExt[] = this.state.citations;
+                        citations.push({
+                            id             : id,
+                            authorId       : this.citation.authorId,
+                            authorFullName : `${author.firstName} ${author.lastName}`,
+                            subject        : this.citation.subject,
+                            message        : this.citation.message,
+                            createdAt      : new Date()
+                        });
+                        this.sortCitations(citations, this.state.citationSort.sortBy, this.state.citationSort.sortMode);
+                        this.setState({
+                            citations,
+                            modifyId   : -1,
+                            modifyMode : ModifyMode.NONE
+                        });
+                    }
+                });
+        } else if (this.state.modifyMode === ModifyMode.UPDATE) {
+            API.updateCitation(this.state.modifyId, this.citation.authorId, this.citation.subject, this.citation.message)
+                .then(() => {
+                    let author: IAuthorRecord | null = null;
+                    for (let i = 0; i < this.authors.length; i++) {
+                        if (this.authors[i].id === this.citation.authorId) {
+                            author = this.authors[i];
+                            break;
+                        }
+                    }
+                    if (author) {
+                        const citations: ICitationRecordExt[] = this.state.citations;
+                        for (let i = 0; i < citations.length; i++) {
+                            if (citations[i].id === this.state.modifyId) {
+                                citations[i] = {
+                                    id             : this.state.modifyId,
+                                    authorId       : this.citation.authorId,
+                                    authorFullName : `${author.firstName} ${author.lastName}`,
+                                    subject        : this.citation.subject,
+                                    message        : this.citation.message,
+                                    createdAt      : citations[i].createdAt
+                                }
+                                break;
+                            }
+                        }
+                        this.sortCitations(citations, this.state.citationSort.sortBy, this.state.citationSort.sortMode);
+                        this.setState({
+                            citations,
+                            modifyId   : -1,
+                            modifyMode : ModifyMode.NONE
+                        });
+                    }
+                });
+        }
     }
 
-    // клик по кнопке удаления цитаты
+    // citation remove event handler
     private onClickDelete(id: number): void {
         this.setState({
             deleteId   : id,
@@ -561,9 +614,9 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         });
     }
 
-    // удаление цитаты
+    // remove a citation
     private deleteCitation(): void {
-        // запрашиваем удаление цитаты, как будто это AJAX-запрос
+        // removing the selected citation in a manner of AJAX request
         API.deleteCitation(this.state.deleteId)
             .then(() => {
                 const citations: ICitationRecord[] = this.state.citations;

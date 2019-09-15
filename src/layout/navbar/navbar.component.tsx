@@ -6,9 +6,9 @@ import { faBookReader } from '@fortawesome/free-solid-svg-icons';
 
 import { Navbar, Nav } from 'react-bootstrap';
 
-// navbar component
+// the component to represent the main navigation menu
 class NavbarComponent extends React.Component<RouteComponentProps> {
-    // form rendering
+    // component output
     public render() {
         return (
             <Navbar bg="primary" variant="dark" fixed="top">

@@ -15,7 +15,7 @@ export interface ICitationRecord {
 }
 
 export class DataBase {
-    // таблица с авторами
+    // author table
     private static readonly TABLE_AUTHORS: IAuthorRecord[] = [
         {
             id          : 1,
@@ -49,7 +49,7 @@ export class DataBase {
         },
     ];
 
-    // таблица с цитатами
+    // citation table
     private static readonly TABLE_CITATIONS: ICitationRecord[] = [
         {
             id        : 1,
@@ -123,7 +123,7 @@ export class DataBase {
         }
     ];
 
-    // получить список всех авторов
+    // get a list of all authors
     public static getAuthors(): IAuthorRecord[] {
         const authors: IAuthorRecord[] = [];
         for (let i: number = 0; i < DataBase.TABLE_AUTHORS.length; i++) {
@@ -132,7 +132,7 @@ export class DataBase {
         return authors;
     }
 
-    // найти автора по заданному id
+    // find an author by the specified id
     public static findAuthor(id: number): IAuthorRecord | null {
         let author: IAuthorRecord | null = null;
         for (let i: number = 0; i < DataBase.TABLE_AUTHORS.length; i++) {
@@ -144,7 +144,7 @@ export class DataBase {
         return author;
     }
 
-    // удалить автора по заданному id
+    // remove an author by the specified id
     public static deleteAuthor(id: number): boolean {
         let index: number = -1;
         for (let i: number = 0; i < DataBase.TABLE_AUTHORS.length; i++) {
@@ -161,8 +161,8 @@ export class DataBase {
         }
     }
 
-    // создать нового автора
-    public static createAuthor(firstName: string, lastName: string, dateOfBirth: Date): void {
+    // create a new author having the specified parameters
+    public static createAuthor(firstName: string, lastName: string, dateOfBirth: Date): number {
         let id: number;
         let found: boolean;
         for (id = 1; id < Number.MAX_SAFE_INTEGER; id++) {
@@ -183,10 +183,12 @@ export class DataBase {
             lastName,
             dateOfBirth
         });
+
+        return id;
     }
 
-    // сохранить заданного автора
-    public static modifyAuthor(id: number, firstName: string, lastName: string, dateOfBirth: Date): boolean {
+    // update author's data by the specified id
+    public static updateAuthor(id: number, firstName: string, lastName: string, dateOfBirth: Date): boolean {
         let found: boolean = false;
         for (let i: number = 0; i < DataBase.TABLE_AUTHORS.length; i++) {
             if (DataBase.TABLE_AUTHORS[i].id === id) {
@@ -203,7 +205,7 @@ export class DataBase {
         return found;
     }
 
-    // получить список всех цитат
+    // get a list of all citations
     public static getCitations(authorId?: number): ICitationRecord[] {
         const citations: ICitationRecord[] = [];
         for (let i: number = 0; i < DataBase.TABLE_CITATIONS.length; i++) {
@@ -214,7 +216,7 @@ export class DataBase {
         return citations;
     }
 
-    // найти цитату по заданному id
+    // find a citation by the specified id
     public static findCitation(id: number): ICitationRecord | null {
         let citation: ICitationRecord | null = null;
         for (let i: number = 0; i < DataBase.TABLE_CITATIONS.length; i++) {
@@ -226,7 +228,7 @@ export class DataBase {
         return citation;
     }
 
-    // удалить цитату по заданному id
+    // remove a citation by the specified id
     public static deleteCitation(id: number): boolean {
         let index: number = -1;
         for (let i: number = 0; i < DataBase.TABLE_CITATIONS.length; i++) {
@@ -243,8 +245,8 @@ export class DataBase {
         }
     }
 
-    // создать новую цитату
-    public static createCitation(authorId: number, subject: string, message: string): void {
+    // create a new citation having the specified parameters
+    public static createCitation(authorId: number, subject: string, message: string): number {
         let id: number;
         let found: boolean;
         for (id = 1; id < Number.MAX_SAFE_INTEGER; id++) {
@@ -266,10 +268,12 @@ export class DataBase {
             message,
             createdAt: new Date()
         });
+
+        return id;
     }
 
-    // сохранить заданную цитату
-    public static modifyCitation(id: number, authorId: number, subject: string, message: string): boolean {
+    // update citation's data by the specified id
+    public static updateCitation(id: number, authorId: number, subject: string, message: string): boolean {
         let found: boolean = false;
         for (let i: number = 0; i < DataBase.TABLE_CITATIONS.length; i++) {
             if (DataBase.TABLE_CITATIONS[i].id === id) {

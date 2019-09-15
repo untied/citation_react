@@ -23,9 +23,9 @@ interface ISortCallback {
     callback?: (column: string, mode: SORT) => void
 }
 
-// компонент "Сортировка колонки таблицы"
+// component to represent the sortable table column
 export default class ColumnSort extends React.Component<ISortMode & ISortColumn & ISortCallback, ISortMode> {
-    // конструктор
+    // component constructor
     public constructor(props: any) {
         super(props);
 
@@ -36,14 +36,14 @@ export default class ColumnSort extends React.Component<ISortMode & ISortColumn 
         this.onClickSorting = this.onClickSorting.bind(this);
     }
 
-    // сброс сортировки
+    // reset sorting mode
     public reset(): void {
         this.setState({
             mode: SORT.UNDEFINED
         });
     }
 
-    // вывод
+    // component output
     public render(): JSX.Element | null {
         if (this.state.mode === SORT.UNDEFINED) {
             return (
@@ -68,7 +68,7 @@ export default class ColumnSort extends React.Component<ISortMode & ISortColumn 
         }
     }
 
-    // клик по кнопке сортировки
+    // sorting button click event handler
     private onClickSorting() {
         if (this.props.callback && this.props.column) {
             let newMode: SORT;
