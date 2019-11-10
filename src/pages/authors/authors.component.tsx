@@ -47,13 +47,17 @@ interface IModifyAuthor {
     dayOfBirth   : number;
 }
 
-interface IAuthorSort {
+interface IAuthorSortParams {
     sortBy   : string;
     sortMode : SORT;
 }
 
+interface IAuthorSort {
+    authorSort: IAuthorSortParams;
+}
+
 // the component to represent a list of authors
-export default class AuthorsComponent extends React.Component<IAuthorList & IAuthorSort & IModifyModal & IDeleteModal, any> {
+export default class AuthorsComponent extends React.Component<any, IAuthorList & IAuthorSort & IModifyModal & IDeleteModal> {
     private author: IModifyAuthor = {
         firstName    : '',
         lastName     : '',
@@ -394,7 +398,7 @@ export default class AuthorsComponent extends React.Component<IAuthorList & IAut
             default:
                 // Nothing!
         }
-        const authorSort: IAuthorSort = {
+        const authorSort: IAuthorSortParams = {
             sortBy,
             sortMode
         };

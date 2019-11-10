@@ -45,13 +45,26 @@ interface IModifyCitation {
     authorId : number;
 }
 
-interface ICitationSort {
+interface ICitationSortParams {
     sortBy   : string;
     sortMode : SORT;
 }
 
+interface ICitationSort {
+    citationSort: ICitationSortParams;
+}
+
+interface ICitationData {
+    modifyId       : number;
+    modifyMode     : ModifyMode;
+    citationLength : number;
+    showReveal     : boolean;
+    deleteId       : number;
+    showDelete     : boolean;
+}
+
 // the component to represent a list of citations
-export default class CitationsComponent extends React.Component<ICitationList & ICitationSort, any> {
+export default class CitationsComponent extends React.Component<any, ICitationList & ICitationSort & ICitationData> {
     // currently selected citation
     private citation: IModifyCitation = {
         subject  : '',
@@ -467,7 +480,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
             default:
                 // Nothing!
         }
-        const citationSort: ICitationSort = {
+        const citationSort: ICitationSortParams = {
             sortBy,
             sortMode
         };
@@ -619,7 +632,7 @@ export default class CitationsComponent extends React.Component<ICitationList & 
         // removing the selected citation in a manner of AJAX request
         API.deleteCitation(this.state.deleteId)
             .then(() => {
-                const citations: ICitationRecord[] = this.state.citations;
+                const citations: ICitationRecordExt[] = this.state.citations;
                 for (let i = 0; i < citations.length; i++) {
                     if (citations[i].id === this.state.deleteId) {
                         citations.splice(i, 1);

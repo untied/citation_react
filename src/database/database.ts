@@ -1,3 +1,8 @@
+export interface IUserRecord {
+    id    : number;
+    login : string;
+    phash : string;
+}
 
 export interface IAuthorRecord {
     id          : number;
@@ -15,6 +20,15 @@ export interface ICitationRecord {
 }
 
 export class DataBase {
+    // user table
+    private static readonly TABLE_USERS: IUserRecord[] = [
+        {
+            id    : 1,
+            login : 'guest',
+            phash : '35675e68f4b5af7b995d9205ad0fc43842f16450'
+        }
+    ];
+
     // author table
     private static readonly TABLE_AUTHORS: IAuthorRecord[] = [
         {
@@ -122,6 +136,21 @@ export class DataBase {
             createdAt : new Date()
         }
     ];
+
+    // authorize a user with the specified login and password
+    public static authorize(login: string, passw: string): boolean {
+        const sha1  : any     = require('simple-sha1');
+        const phash : string  = sha1.sync(passw);
+        let   found : boolean = false;
+
+        for (let i: number = 0; i < DataBase.TABLE_USERS.length; i++) {
+            if (DataBase.TABLE_USERS[i].login === login && DataBase.TABLE_USERS[i].phash === phash) {
+                found = true;
+                break;
+            }
+        }
+        return found;
+    }
 
     // get a list of all authors
     public static getAuthors(): IAuthorRecord[] {
